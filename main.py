@@ -7,6 +7,8 @@ import zipfile
 
 import rasterio
 import rasterio.features
+import rasterio.mask
+import shapely
 from rasterio._warp import Resampling
 from rasterio.warp import reproject
 from dbfread import DBF
@@ -16,6 +18,9 @@ from shapely.geometry import Point, Polygon
 import re
 from rasterio.plot import show
 import matplotlib
+import time
+
+from DatabaseHandler import DatabaseHandler
 
 matplotlib.use('Qt5Agg')
 
@@ -42,25 +47,25 @@ def read_dbf():
                 file_path = os.path.join(root, file)
                 process_dbf(file_path)
 
-def find_containing_shp(x,y,folder):
+def find_containing_shp(lat,lon,folder):
     for root, dirs, files in os.walk(folder):
         for file in files:
             if file.endswith(".shp"):
                 file_path = os.path.join(root, file)
                 # print(file_path)
-                shp_file=coords_present_in_shp(file_path,x,y)
+                shp_file=coords_present_in_shp(file_path,lat,lon)
                 if shp_file != None:
                     return shp_file
 
 def coords_present_in_shp(file,x,y):
     be_stat = gpd.read_file(file, crs="EPSG:31370")
     be_stat.set_crs(epsg="31370",inplace=True)
-    be_stat.to_crs(epsg="4326", inplace=True)
     bounds=be_stat.total_bounds
     if bounds[0]<=x and bounds[2]>=x and bounds[1]<=y and bounds[3]>=y:
+        print("Hit on",file)
         return file
     else:
-        print("No hit on ",file)
+        print("No hit on",file)
 
 def extract_corresponding_tiff(name):
     elements=name.split('/')
@@ -86,35 +91,45 @@ def read_shp(file):
     print(be_stat.columns)
 
 if __name__ == '__main__':
-    x = 3.237619
-    y = 51.207930
-    # print(find_containing_shp(x, y,"DSM"))
+    conn=DatabaseHandler.get_connection()
+    lat=211552.031768453
+    lon=178035.86512654446
+    start=time.time()
+    shape=(list(DatabaseHandler.get_records(conn,lat,lon)))[0]
+    p=shapely.wkt.loads(shape)
+    print(p)
+    print(type(p))
+    print(time.time()-start, " seconds")
+    conn.close()
+
+    shp_file=find_containing_shp(lat,lon,"DSM")
     # print(find_containing_shp(x, y,"ADM"))
-    # tiff_file=extract_corresponding_tiff('DSM/DHMVIIDSMRAS1m_k13/DHMVII_vdc_k13.shp')
-    read_shp('ADM/Adp_20201108_04000_Shapefile/Shapefile/Adp04000.shp')
+    tiff_file=extract_corresponding_tiff(shp_file)
+    # read_shp('ADM/Adp04000.shp')
 
     # brugge_crs_31370=translate_coords(x,y,"4326","31370")
     #
-    # with rasterio.open(tiff_file) as dataset:
-    #     print("opening ",tiff_file)
-    #     location= dataset.index(brugge_crs_31370.x,brugge_crs_31370.y)
-    #     location_x=location[0][0]
-    #     location_y = location[1][0]
-    #     print(location_x,location_y)
-    #     # print(dataset.count)
-    #     # print(dataset.crs)
-    #     # Read the dataset's valid data mask as a ndarray.
-    #     # mask = dataset.dataset_mask()
-    #     print(dataset.meta)
-    #     print(dataset.bounds)
-    #     print(dataset.indexes)
-    #     array=dataset.read()
-    #     # print(type(location_x),location_x)
-    #     print(array.shape)
-    #     offset=100
-    #     show(array[:,location_x-offset:location_x+offset,location_y-offset:location_y+offset])
-    #     # print(type(array))
-    #     # print(array)
+    with rasterio.open(tiff_file) as dataset:
+        print("opening ",tiff_file)
+        location = dataset.index(lat,lon)
+        print("location:",location)
+        out_image, out_transform = rasterio.mask.mask(dataset, p)
+        show(out_image)
+        # out_meta = src.meta
+        # print(dataset.count)
+        # print(dataset.crs)
+        # Read the dataset's valid data mask as a ndarray.
+        # mask = dataset.dataset_mask()
+        print(dataset.meta)
+        print(dataset.bounds)
+        print(dataset.indexes)
+        array=dataset.read()
+        # # print(type(location_x),location_x)
+        # print(array.shape)
+        offset=100
+        show(array[:,location[0]-offset:location[0]+offset,location[1]-offset:location[1]+offset])
+        # # print(type(array))
+        # # print(array)
         # while array != None:
         #     array = dataset.read()
         #     print(type(array))

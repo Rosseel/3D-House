@@ -1,0 +1,3 @@
+#db duplicate records eruit smijten
+#db opsplitsen op basis van provincie of evt arrondisement
+#overbodige kolommen buiten smijten
