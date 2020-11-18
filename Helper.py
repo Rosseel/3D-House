@@ -1,6 +1,7 @@
 import os
 import zipfile
-
+import geopandas as gpd
+from shapely.geometry import Point
 
 def unzip():
     for folder, dirs, files in os.walk("/home/techpriest/Desktop/becode/SpaceEYE/DSM", topdown=False):
@@ -17,4 +18,7 @@ def unzip():
                 zip_file.close()
                 os.remove(os.path.join(folder, name))
 
-
+def translate_coords(coords_x,coords_y,crs_input,crs_output):
+    location=gpd.GeoSeries([Point(coords_x,coords_y)])
+    location.set_crs(epsg=crs_input,inplace=True)
+    return location.to_crs(epsg=crs_output)

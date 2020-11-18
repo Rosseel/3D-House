@@ -32,3 +32,7 @@ SET wgs_md5_bigint=CAST(md5(((((lat_middle)::text)::bytea || '\x'::bytea) || ((l
 #remove all records but keep the skeleton
 DELETE FROM table_name;
 
+SELECT * 
+ INTO public.percelen_04000
+ FROM public.percelen 
+ WHERE public.percelen.niscode like '04%' ;
