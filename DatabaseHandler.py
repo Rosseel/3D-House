@@ -1,10 +1,9 @@
 import hashlib
 import time
-
 import psycopg2
-from shapely import wkb, wkt
-import pygeohash as gh
-from shapely.geometry import Point
+from shapely import wkb
+import Helper
+
 
 class DatabaseHandler():
     def __init__(self,address):
@@ -17,11 +16,15 @@ class DatabaseHandler():
 
     @staticmethod
     def get_records(connection,lat,lon,db):
+        point=Helper.translate_coords(lon,lat,"4326","31370")[0]
+        lat=point.x
+        lon=point.y
+        print("Dbhandler converted coords to:",lat,lon)
         cursor = connection.cursor()
         m = hashlib.md5()
         m.update(str.encode("{}{}".format(str(lat),str(lon))))
         md5=m.hexdigest()
-        get_all_query = 'select * from public.percelen_{} where {}=\'{}\';'.format(db,'lambert_md5', md5)
+        get_all_query = 'select * from public.percelen_{} where ST_Contains(geom,ST_SetSRID(ST_Point({},{}),31370));'.format(db,lat,lon)
         print("query:",get_all_query)
         t=time.time()
         cursor.execute(get_all_query)
@@ -43,6 +46,5 @@ class DatabaseHandler():
                                           database="techpriest")
             print("Established Connection")
             return connection
-
         except (Exception, psycopg2.DatabaseError) as error:
             print("Error while creating connection", error)

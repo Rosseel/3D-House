@@ -12,19 +12,13 @@ class Controller:
         self.gui=SGUI(self)
 
     def parse_coords(self,lat,lon):
-        print("parse")
-        # dr.parse_coords(lat,lon)
-        # if lat == 0:
-        lat = 211552.031768453
-        lon = 178035.86512654446
-        # print(lat, lon)
-        center_wgs=Helper.translate_coords(lat,lon,"31370","4326")[0]
-        center=Point(lat,lon)
-        print(type(center_wgs),center_wgs)
+        center=Point(lon,lat)
         for k,v in self.dict.items():
-            if v.contains(center_wgs):
+            if v.contains(center):
+                print("Need to look into db percelen_{}".format(k))
                 dr.parse_coords(lat,lon,k)
                 return
+        raise Exception("Coordinates are invalid")
 
     def setup(self):
         prov_niscode_shapes = {}
